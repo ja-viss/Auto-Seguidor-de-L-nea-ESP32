@@ -1,0 +1,113 @@
+// Definición de pines para el driver de motores (L298N)
+#define MOTOR_A_EN 4
+#define MOTOR_A_IN1 2
+#define MOTOR_A_IN2 15
+#define MOTOR_B_EN 16
+#define MOTOR_B_IN3 17
+#define MOTOR_B_IN4 5
+
+// Definición de pines para sensores infrarrojos
+#define IR_IZQ 12
+#define IR_DER 14
+
+// Definición de pines para sensores de proximidad
+#define PROX_IZQ 27
+#define PROX_DER 26
+
+// Velocidades de los motores (ajustar según necesidades)
+#define VELOCIDAD_NORMAL 200
+#define VELOCIDAD_GIRO 150
+
+// Umbral de detección de obstáculos
+#define UMBRAL_OBSTACULO 500  // Ajustar según sensor y distancia deseada
+
+void setup() {
+  // Configurar pines de motores
+  pinMode(MOTOR_A_IN1, OUTPUT);
+  pinMode(MOTOR_A_IN2, OUTPUT);
+  pinMode(MOTOR_B_IN3, OUTPUT);
+  pinMode(MOTOR_B_IN4, OUTPUT);
+  
+  // Configurar PWM para control de velocidad
+  ledcSetup(0, 30000, 8);  // Canal 0, 30kHz, 8-bit resolution
+  ledcSetup(1, 30000, 8);  // Canal 1
+  ledcAttachPin(MOTOR_A_EN, 0);
+  ledcAttachPin(MOTOR_B_EN, 1);
+
+  // Configurar pines de sensores
+  pinMode(IR_IZQ, INPUT);
+  pinMode(IR_DER, INPUT);
+  pinMode(PROX_IZQ, INPUT);
+  pinMode(PROX_DER, INPUT);
+
+  Serial.begin(115200);
+}
+
+void loop() {
+  // Leer sensores de proximidad
+  int proxIzq = analogRead(PROX_IZQ);
+  int proxDer = analogRead(PROX_DER);
+
+  // Detener si detecta obstáculo
+  if (proxIzq > UMBRAL_OBSTACULO || proxDer > UMBRAL_OBSTACULO) {
+    detenerMotores();
+    delay(500);
+    return;
+  }
+
+  // Leer sensores de línea
+  int irIzq = digitalRead(IR_IZQ);
+  int irDer = digitalRead(IR_DER);
+
+  // Lógica de seguimiento de línea
+  if (irIzq == LOW && irDer == LOW) {
+    // Ambos sensores en línea - avanzar
+    moverAdelante();
+  } else if (irIzq == HIGH && irDer == LOW) {
+    // Desviado a la derecha - girar izquierda
+    girarIzquierda();
+  } else if (irIzq == LOW && irDer == HIGH) {
+    // Desviado a la izquierda - girar derecha
+    girarDerecha();
+  } else {
+    // No detecta línea - detener o buscar
+    detenerMotores();
+  }
+}
+
+// Funciones de control de motores
+void moverAdelante() {
+  digitalWrite(MOTOR_A_IN1, HIGH);
+  digitalWrite(MOTOR_A_IN2, LOW);
+  digitalWrite(MOTOR_B_IN3, HIGH);
+  digitalWrite(MOTOR_B_IN4, LOW);
+  ledcWrite(0, VELOCIDAD_NORMAL);
+  ledcWrite(1, VELOCIDAD_NORMAL);
+}
+
+void girarDerecha() {
+  digitalWrite(MOTOR_A_IN1, HIGH);
+  digitalWrite(MOTOR_A_IN2, LOW);
+  digitalWrite(MOTOR_B_IN3, LOW);
+  digitalWrite(MOTOR_B_IN4, HIGH);
+  ledcWrite(0, VELOCIDAD_GIRO);
+  ledcWrite(1, VELOCIDAD_GIRO);
+}
+
+void girarIzquierda() {
+  digitalWrite(MOTOR_A_IN1, LOW);
+  digitalWrite(MOTOR_A_IN2, HIGH);
+  digitalWrite(MOTOR_B_IN3, HIGH);
+  digitalWrite(MOTOR_B_IN4, LOW);
+  ledcWrite(0, VELOCIDAD_GIRO);
+  ledcWrite(1, VELOCIDAD_GIRO);
+}
+
+void detenerMotores() {
+  digitalWrite(MOTOR_A_IN1, LOW);
+  digitalWrite(MOTOR_A_IN2, LOW);
+  digitalWrite(MOTOR_B_IN3, LOW);
+  digitalWrite(MOTOR_B_IN4, LOW);
+  ledcWrite(0, 0);
+  ledcWrite(1, 0);
+}
